@@ -4,7 +4,7 @@ const Main = imports.ui.main;
 const Tweener = imports.ui.tweener;
 const GLib = imports.gi.GLib;
 const Mainloop = imports.mainloop;
-const Lang = imports.lang;
+
 const ExtensionUtils = imports.misc.extensionUtils;
 const Me = ExtensionUtils.getCurrentExtension();
 const Convenience = Me.imports.convenience;
