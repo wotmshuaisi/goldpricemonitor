@@ -13,6 +13,7 @@ simple gnome extension helps you tracking gold price in realtime, realtime data 
 
 1. `make install`
 2. Gnome Extensions (waiting for approval...)
+3. download from [Release](https://github.com/wotmshuaisi/goldpricemonitor/releases), extract zip file into `~/.local/share/gnome-shell/extension/`, `alt`+`f2`input`r` restart gnome shell
 
 ## References
 
