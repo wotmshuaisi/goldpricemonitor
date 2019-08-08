@@ -14,9 +14,6 @@ function _refresh_done() {
 }
 
 function _refresh_price() {
-    // var date = new Date();
-    // price.text = date.getTime().toString();
-
     var request = Soup.Message.new("GET", api_endpoint + "USD-XAU/1");
     _httpSession.queue_message(request, function (session, message) {
         if (request.status_code !== 200) {
