@@ -2,15 +2,20 @@ const St = imports.gi.St;
 const Soup = imports.gi.Soup;
 const Main = imports.ui.main;
 const Tweener = imports.ui.tweener;
+const GLib = imports.gi.GLib;
+const Mainloop = imports.mainloop;
+const Lang = imports.lang;
+const ExtensionUtils = imports.misc.extensionUtils;
+const Me = ExtensionUtils.getCurrentExtension();
+const Convenience = Me.imports.convenience;
 
 // for application - constants
 const _httpSession = new Soup.SessionAsync();
 const api_endpoint = "https://data-asg.goldprice.org/GetData/"
-// for application - variables
-let text, button, price;
 
-function _refresh_done() {
-}
+// for application - variables
+let text, button, price, settings;
+
 
 function _refresh_price() {
     request = Soup.Message.new("GET", api_endpoint + "USD-XAU/1");
@@ -19,20 +24,29 @@ function _refresh_price() {
             log("[Gold Price Monitor]: bad response - ", message.status_code);
             return;
         }
-        data = JSON.parse(request.response_body.data);
+        let data = JSON.parse(request.response_body.data);
         if (data.length !== 1) {
             log("[Gold Price Monitor]: unexpected response - ", request.response_body.data);
             return;
         }
-        price_text = data[0];
+        let price_text = data[0];
         price.text = price_text.split(",")[1] + "(USD) / ℥";
     })
 
     _refresh_done();
 }
 
-function init() {
 
+function _refresh_done() {
+    unitType = settings.get_int("weight-uint");
+    log(unitType);
+}
+
+
+function init() {
+    // settings
+    settings = Convenience.getSettings();
+    // Widget
     button = new St.Bin({
         style_class: 'panel-button',
         reactive: true,
@@ -41,12 +55,11 @@ function init() {
         y_fill: false,
         track_hover: true
     });
-
     price = new St.Label({
         text: "Loading..."
     });
-
     button.set_child(price);
+    // Events
     button.connect('button-press-event', _refresh_price);
     _refresh_price();
 }

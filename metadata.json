@@ -5,5 +5,5 @@
     "shell-version": [
         "3.32.2"
     ],
-    "settings-schema": "org.gnome.shell.extensions.goldpricemonitor"
+    "settings-schema": "org.gnome.shell.extensions.gold-price-monitor"
 }
