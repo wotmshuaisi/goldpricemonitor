@@ -11,7 +11,7 @@
       <description>Gold Currency.</description>
     </key>
     <key name="refresh-interval" type="i">
-      <default>1000</default>
+      <default>5</default>
       <summary>Refresh interval in seconds</summary>
       <description>Refresh interval in seconds.</description>
     </key>
