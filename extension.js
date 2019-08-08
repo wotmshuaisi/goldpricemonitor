@@ -1,13 +1,12 @@
-
 const St = imports.gi.St;
+const Soup = imports.gi.Soup;
 const Main = imports.ui.main;
 const Tweener = imports.ui.tweener;
-const Soup = imports.gi.Soup;
 
+// for application - constants
 const _httpSession = new Soup.SessionAsync();
-
 const api_endpoint = "https://data-asg.goldprice.org/GetData/"
-
+// for application - variables
 let text, button, price;
 
 function _refresh_done() {

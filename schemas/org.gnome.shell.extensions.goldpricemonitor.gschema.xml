@@ -1,0 +1,7 @@
+<schemalist gettext-domain="goldpricemonitor">
+    <enum id="org.gnome.shell.extensions.goldpricemonitor.unit-type">
+        <value value="0" nick="Gram(g)"/>
+        <value value="1" nick="Ounce(℥)"/>
+        <value value="2" nick="Kilogram(kg)"/>
+    </enum>
+</schemalist>

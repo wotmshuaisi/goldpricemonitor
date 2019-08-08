@@ -4,5 +4,6 @@
     "uuid": "Gold_Price_Monitor@wotmshuaisi_github",
     "shell-version": [
         "3.32.2"
-    ]
+    ],
+    "settings-schema": "org.gnome.shell.extensions.goldpricemonitor"
 }
