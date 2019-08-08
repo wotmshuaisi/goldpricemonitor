@@ -21,7 +21,7 @@ const WEIGHT_OPTIONS = {
     2: "kg",
 }
 // for application - variables
-let text, button, price, settings, taskLock, refresh_trigger;
+let text, button, price, settings, taskLock, refresh_trigger, pause;
 
 function _refresh_price() {
     // lock
@@ -58,6 +58,9 @@ function _refresh_price() {
 
 
 function _refresh_done() {
+    if (pause == true) {
+        return;
+    }
     taskLock = false;
     if (refresh_trigger) {
         Mainloop.source_remove(refresh_trigger);
@@ -89,9 +92,11 @@ function init() {
 }
 
 function enable() {
+    pause = false;
     Main.panel._rightBox.insert_child_at_index(button, 0);
 }
 
 function disable() {
+    pause = true;
     Main.panel._rightBox.remove_child(button);
 }
