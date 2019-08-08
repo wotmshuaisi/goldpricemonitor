@@ -58,10 +58,10 @@ function _refresh_price() {
 
 
 function _refresh_done() {
+    taskLock = false;
     if (pause == true) {
         return;
     }
-    taskLock = false;
     if (refresh_trigger) {
         Mainloop.source_remove(refresh_trigger);
         refresh_trigger = null;
