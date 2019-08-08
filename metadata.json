@@ -1,0 +1,8 @@
+{
+    "name": "Gold Price Monitor",
+    "description": "tracking gold price in specific currency",
+    "uuid": "Gold_Price_Monitor@wotmshuaisi_github",
+    "shell-version": [
+        "3.32.2"
+    ]
+}
