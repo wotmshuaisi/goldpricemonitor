@@ -7,7 +7,7 @@ const Me = ExtensionUtils.getCurrentExtension();
 const Convenience = Me.imports.convenience;
 const Currencies = Me.imports.currencies;
 
-let weightUnit, settings, options;
+let settings, options;
 
 function init() {
     settings = Convenience.getSettings();

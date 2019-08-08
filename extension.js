@@ -11,14 +11,21 @@ const Convenience = Me.imports.convenience;
 
 // for application - constants
 const _httpSession = new Soup.SessionAsync();
-const api_endpoint = "https://data-asg.goldprice.org/GetData/"
-
+const api_endpoint = "https://data-asg.goldprice.org/GetData/";
+const WEIGHT_UNIT = "weight-uint";
+const CURRENCY = "currency";
+const REFRESH_INTERVAL = "refresh-interval";
+const WEIGHT_OPTIONS = {
+    0: "℥",
+    1: "g",
+    2: "kg",
+}
 // for application - variables
 let text, button, price, settings;
 
 
 function _refresh_price() {
-    request = Soup.Message.new("GET", api_endpoint + "USD-XAU/1");
+    request = Soup.Message.new("GET", api_endpoint + settings.get_string(CURRENCY) + "-XAU/1");
     _httpSession.queue_message(request, function (session, message) {
         if (request.status_code !== 200) {
             log("[Gold Price Monitor]: bad response - ", message.status_code);
@@ -29,17 +36,23 @@ function _refresh_price() {
             log("[Gold Price Monitor]: unexpected response - ", request.response_body.data);
             return;
         }
-        let price_text = data[0];
-        price.text = price_text.split(",")[1] + "(USD) / ℥";
-    })
+        let price_number = Number.parseInt(data[0].split(",")[1]);
+        switch (settings.get_int(WEIGHT_UNIT)) {
+            case 1:
+                price_number = price_number / 31.1034768;
+                break;
+            case 2:
+                price_number = price_number / 31.1034768 * 1000;
+                break;
+        }
+        price.text = parseFloat(price_number).toFixed(3) + "(" + settings.get_string(CURRENCY) + ") / " + WEIGHT_OPTIONS[settings.get_int(WEIGHT_UNIT)];
+    });
 
     _refresh_done();
 }
 
 
 function _refresh_done() {
-    unitType = settings.get_int("weight-uint");
-    log(unitType);
 }
 
 
