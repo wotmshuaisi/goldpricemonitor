@@ -1,10 +1,10 @@
 const St = imports.gi.St;
+const Lang = imports.lang;
 const Soup = imports.gi.Soup;
 const Main = imports.ui.main;
-const Tweener = imports.ui.tweener;
 const GLib = imports.gi.GLib;
 const Mainloop = imports.mainloop;
-
+const Tweener = imports.ui.tweener;
 const ExtensionUtils = imports.misc.extensionUtils;
 const Me = ExtensionUtils.getCurrentExtension();
 const Convenience = Me.imports.convenience;
@@ -21,8 +21,7 @@ const WEIGHT_OPTIONS = {
     2: "kg",
 }
 // for application - variables
-let text, button, price, settings, taskLock;
-
+let text, button, price, settings, taskLock, refresh_trigger;
 
 function _refresh_price() {
     // lock
@@ -31,7 +30,7 @@ function _refresh_price() {
     }
     taskLock = true
     // request
-    request = Soup.Message.new("GET", api_endpoint + settings.get_string(CURRENCY) + "-XAU/1");
+    let request = Soup.Message.new("GET", api_endpoint + settings.get_string(CURRENCY) + "-XAU/1");
     _httpSession.queue_message(request, function (session, message) {
         if (request.status_code !== 200) {
             log("[Gold Price Monitor]: bad response - ", message.status_code);
@@ -42,7 +41,7 @@ function _refresh_price() {
             log("[Gold Price Monitor]: unexpected response - ", request.response_body.data);
             return;
         }
-        let price_number = Number.parseInt(data[0].split(",")[1]);
+        let price_number = Number.parseFloat(data[0].split(",")[1]);
         switch (settings.get_int(WEIGHT_UNIT)) {
             case 1:
                 price_number = price_number / 31.1034768;
@@ -51,7 +50,7 @@ function _refresh_price() {
                 price_number = price_number / 31.1034768 * 1000;
                 break;
         }
-        price.text = parseFloat(price_number).toFixed(3) + "(" + settings.get_string(CURRENCY) + ") / " + WEIGHT_OPTIONS[settings.get_int(WEIGHT_UNIT)];
+        price.text = price_number.toFixed(3) + "(" + settings.get_string(CURRENCY) + ") / " + WEIGHT_OPTIONS[settings.get_int(WEIGHT_UNIT)];
     });
 
     _refresh_done();
@@ -60,6 +59,11 @@ function _refresh_price() {
 
 function _refresh_done() {
     taskLock = false;
+    if (refresh_trigger) {
+        Mainloop.source_remove(refresh_trigger);
+        refresh_trigger = null;
+    }
+    refresh_trigger = Mainloop.timeout_add_seconds(settings.get_int(REFRESH_INTERVAL), Lang.bind(this, _refresh_price));
 }
 
 
