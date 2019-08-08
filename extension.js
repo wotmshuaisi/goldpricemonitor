@@ -21,10 +21,16 @@ const WEIGHT_OPTIONS = {
     2: "kg",
 }
 // for application - variables
-let text, button, price, settings;
+let text, button, price, settings, taskLock;
 
 
 function _refresh_price() {
+    // lock
+    if (taskLock === true) {
+        return
+    }
+    taskLock = true
+    // request
     request = Soup.Message.new("GET", api_endpoint + settings.get_string(CURRENCY) + "-XAU/1");
     _httpSession.queue_message(request, function (session, message) {
         if (request.status_code !== 200) {
@@ -53,6 +59,7 @@ function _refresh_price() {
 
 
 function _refresh_done() {
+    taskLock = false;
 }
 
 
