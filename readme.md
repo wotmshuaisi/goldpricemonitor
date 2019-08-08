@@ -3,7 +3,7 @@ Gold Price Monitor
 
 [![forthebadge](https://forthebadge.com/images/badges/made-with-javascript.svg)](https://forthebadge.com) [![forthebadge](https://forthebadge.com/images/badges/uses-git.svg)](https://forthebadge.com)
 
-simple gnome extension helps you tracking gold price in realtime
+simple gnome extension helps you tracking gold price in realtime, realtime data from [GOLDPRICE](https://goldprice.org/) 
 
 ## ScreenShot
 
