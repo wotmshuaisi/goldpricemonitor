@@ -1,2 +1,2 @@
 reload:
-	rsync -av --exclude=../goldpricemonitor/.git . ~/.local/share/gnome-shell/extensions/Gold_Price_Monitor@wotmshuaisi_github && gnome-shell-extension-tool -r Gold_Price_Monitor@wotmshuaisi_github
+	rsync -av --exclude=../goldpricemonitor/.git . ~/.local/share/gnome-shell/extensions/Gold_Price_Monitor@wotmshuaisi_github && gnome-shell-extension-tool -r Gold_Price_Monitor@wotmshuaisi_github && gnome-shell-extension-prefs
