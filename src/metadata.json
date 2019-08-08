@@ -5,6 +5,7 @@
     "shell-version": [
         "3.32.2"
     ],
+    "dangerous": false,
     "url": "https://github.com/wotmshuaisi/goldpricemonitor",
     "settings-schema": "org.gnome.shell.extensions.gold-price-monitor"
 }
