@@ -97,10 +97,8 @@ function buildPrefsWidget() {
     let label = new Gtk.Label({ label: "Refresh interval(Minutes)", xalign: 0 });
     let scale = Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL, 1, 60, 1);
     scale.set_value(settings.get_int("refresh-interval"));
-
     scale.connect('value-changed', change_value);
 
-    // hbox.pack_start(label, true, true, 0);
     frame.add(label);
     frame.add(scale);
 

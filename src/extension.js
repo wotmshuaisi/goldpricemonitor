@@ -23,6 +23,11 @@ const WEIGHT_OPTIONS = {
 // for application - variables
 let text, button, price, settings, taskLock, refresh_trigger, pause;
 
+function set_headers(request) {
+    request.request_headers.append('cache-control', "no-cache");
+    request.request_headers.append('user-agent', "Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/77.0.3833.120 Safari/537.36");
+}
+
 function _refresh_price() {
     // lock
     if (taskLock === true) {
@@ -31,6 +36,7 @@ function _refresh_price() {
     taskLock = true
     // request
     let request = Soup.Message.new("GET", api_endpoint + settings.get_string(CURRENCY) + "-XAU/1");
+    set_headers(request);
     _httpSession.queue_message(request, function (session, message) {
         if (request.status_code !== 200) {
             log("[Gold Price Monitor]: bad response - ", message.status_code);
