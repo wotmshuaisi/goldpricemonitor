@@ -66,7 +66,8 @@ function _refresh_done() {
         Mainloop.source_remove(refresh_trigger);
         refresh_trigger = null;
     }
-    refresh_trigger = Mainloop.timeout_add_seconds(settings.get_int(REFRESH_INTERVAL), Lang.bind(this, _refresh_price));
+    log(settings.get_int(REFRESH_INTERVAL));
+    refresh_trigger = Mainloop.timeout_add_seconds(settings.get_int(REFRESH_INTERVAL) * 60, Lang.bind(this, _refresh_price));
 }
 
 

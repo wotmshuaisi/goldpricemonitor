@@ -85,33 +85,24 @@ function buildComboBox(key, values, labeltext, type) {
     return hbox;
 }
 
+function change_value(widget) {
+    settings.get_int("refresh-interval");
+}
+
 function buildPrefsWidget() {
     let frame = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL, border_width: 10, spacing: 10 });
     frame.add(buildComboBox("weight-uint", options, "Gold Weight Unit", "unit"));
     frame.add(buildComboBox("currency", Currencies.hcCurrencies, "Gold Currency", "currencies"));
 
-    let hbox = new Gtk.Box({
-        orientation: Gtk.Orientation.HORIZONTAL,
-        margin_top: 5
-    });
-    let setting_label = new Gtk.Label({
-        label: "Refresh interval(seconds)",
-        xalign: 0
-    });
+    let label = new Gtk.Label({ label: "Refresh interval(Minutes)", xalign: 0 });
+    let scale = Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL, 1, 60, 1);
+    scale.set_value(settings.get_int("refresh-interval"));
 
-    let model = new Gtk.ListStore();
-    model.set_column_types([GObject.TYPE_STRING, GObject.TYPE_STRING]);
-    let setting_input = Gtk.SpinButton.new_with_range(0, 60 * 60 * 24, 1);
-    setting_input.get_style_context().add_class(Gtk.STYLE_CLASS_RAISED);
-    setting_input.value = settings.get_int("refresh-interval")
+    scale.connect('value-changed', change_value);
 
-    setting_input.connect('changed', function (entry) {
-        settings.set_int("refresh-interval", setting_input.get_value());
-    });
-
-    hbox.pack_start(setting_label, true, true, 0);
-    hbox.add(setting_input, true, true, 1);
-    frame.add(hbox)
+    // hbox.pack_start(label, true, true, 0);
+    frame.add(label);
+    frame.add(scale);
 
     frame.show_all();
     return frame;
