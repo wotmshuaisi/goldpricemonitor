@@ -86,7 +86,7 @@ function buildComboBox(key, values, labeltext, type) {
 }
 
 function change_value(widget) {
-    settings.get_int("refresh-interval");
+    settings.set_int('refresh-interval', widget.get_value());
 }
 
 function buildPrefsWidget() {
