@@ -12,8 +12,8 @@
     </key>
     <key name="refresh-interval" type="i">
       <default>60</default>
-      <summary>Refresh interval in seconds</summary>
-      <description>Refresh interval in seconds.</description>
+      <summary>Refresh interval in Minutes</summary>
+      <description>Refresh interval in Minutes.</description>
     </key>
   </schema>
 </schemalist>
