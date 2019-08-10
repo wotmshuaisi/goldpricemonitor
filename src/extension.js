@@ -40,11 +40,13 @@ function _refresh_price() {
     _httpSession.queue_message(request, function (session, message) {
         if (request.status_code !== 200) {
             log("[Gold Price Monitor]: bad response - ", message.status_code);
+            taskLock = false;
             return;
         }
         let data = JSON.parse(request.response_body.data);
         if (data.length !== 1) {
             log("[Gold Price Monitor]: unexpected response - ", request.response_body.data);
+            taskLock = false;
             return;
         }
         let price_number = Number.parseFloat(data[0].split(",")[1]);
@@ -56,25 +58,16 @@ function _refresh_price() {
                 price_number = price_number / 31.1034768 * 1000;
                 break;
         }
+        log("[Gold Price Monitor]: " + price.text + " => " + price_number.toFixed(3));
         price.text = price_number.toFixed(3) + "(" + settings.get_string(CURRENCY) + ") / " + WEIGHT_OPTIONS[settings.get_int(WEIGHT_UNIT)];
     });
 
-    _refresh_done();
-}
-
-
-function _refresh_done() {
     taskLock = false;
-    if (pause == true) {
+    if (pause) {
         return;
     }
-    if (refresh_trigger) {
-        Mainloop.source_remove(refresh_trigger);
-        refresh_trigger = null;
-    }
-    refresh_trigger = Mainloop.timeout_add_seconds(settings.get_int(REFRESH_INTERVAL) * 60, Lang.bind(this, _refresh_price));
+    Mainloop.timeout_add_seconds(settings.get_int(REFRESH_INTERVAL) * 60, Lang.bind(this, _refresh_price));
 }
-
 
 function init() {
     // settings
@@ -94,7 +87,7 @@ function init() {
     button.set_child(price);
     // Events
     button.connect('button-press-event', _refresh_price);
-    _refresh_price();
+    Mainloop.timeout_add_seconds(1, Lang.bind(this, _refresh_price));
 }
 
 function enable() {
