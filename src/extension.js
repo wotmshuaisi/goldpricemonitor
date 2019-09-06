@@ -20,7 +20,7 @@ function _refresh_price() {
     }
     taskLock = true
     // request
-    request = Soup.Message.new("GET", "https://data-asg.goldprice.org/GetData/" + settings.get_string("currency") + "-XAU/1");
+    request = Soup.Message.new("GET", "https://data-asg.goldprice.org/GetData/" + settings.get_string(CURRENCY) + "-XAU/1");
     request.request_headers.append('cache-control', "no-cache");
     request.request_headers.append('user-agent', "Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/77.0.3833.120 Safari/537.36");
     _httpSession.queue_message(request, function (session, message) {
