@@ -8,4 +8,5 @@ install:
 	rsync -av --exclude=.git ./src/ ~/.local/share/gnome-shell/extensions/Gold_Price_Monitor@wotmshuaisi_github && gnome-shell-extension-tool -e Gold_Price_Monitor@wotmshuaisi_github
 
 build:
-	cd src && zip -qrj ../Gold_Price_Monitor@wotmshuaisi_github.zip . && cd ..
+	rm -rf Gold_Price_Monitor@wotmshuaisi_github.zip
+	cd src && zip -qr ../Gold_Price_Monitor@wotmshuaisi_github.zip . && cd ..
