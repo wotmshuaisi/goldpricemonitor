@@ -83,7 +83,8 @@ function enable() {
         track_hover: true
     });
     price_label = new St.Label({
-        text: "Loading..."
+        text: "Loading...",
+        style_class: "price-label"
     });
     button.set_child(price_label);
     // Event Looping
