@@ -4,7 +4,6 @@ const Soup = imports.gi.Soup;
 const Main = imports.ui.main;
 const GLib = imports.gi.GLib;
 const Mainloop = imports.mainloop;
-const Tweener = imports.ui.tweener;
 const ExtensionUtils = imports.misc.extensionUtils;
 const Me = ExtensionUtils.getCurrentExtension();
 const Convenience = Me.imports.convenience;
