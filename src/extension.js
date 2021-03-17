@@ -83,7 +83,7 @@ function enable() {
     });
     price_label = new St.Label({
         text: "Loading...",
-        style_class: "price-label"
+        y_align: Clutter.ActorAlign.CENTER,
     });
     button.set_child(price_label);
     // Event Looping
