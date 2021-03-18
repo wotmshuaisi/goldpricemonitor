@@ -7,6 +7,7 @@ const Mainloop = imports.mainloop;
 const ExtensionUtils = imports.misc.extensionUtils;
 const Me = ExtensionUtils.getCurrentExtension();
 const Convenience = Me.imports.convenience;
+const { Clutter } = imports.gi;
 
 // for application - variables
 let _httpSession, CURRENCY, WEIGHT_UNIT, REFRESH_INTERVAL, WEIGHT_OPTIONS;
@@ -79,11 +80,11 @@ function enable() {
         can_focus: true,
         // x_fill: true,
         // y_fill: false,
-        track_hover: true
+        track_hover: true,
+        y_align: Clutter.ActorAlign.CENTER,
     });
     price_label = new St.Label({
         text: "Loading...",
-        y_align: Clutter.ActorAlign.CENTER,
     });
     button.set_child(price_label);
     // Event Looping
