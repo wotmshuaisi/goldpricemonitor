@@ -3,9 +3,10 @@
     "description": "simple gnome extension helps you tracking gold price in realtime",
     "uuid": "Gold_Price_Monitor@wotmshuaisi_github",
     "shell-version": [
-        "3.34",
-        "3.32",
-        "3.36"
+        "3.3",
+        "3.36",
+        "3.38",
+        "40"
     ],
     "dangerous": false,
     "url": "https://github.com/wotmshuaisi/goldpricemonitor",

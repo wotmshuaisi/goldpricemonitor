@@ -1,108 +1,156 @@
-const GObject = imports.gi.GObject;
+'use strict';
+
+const Gio = imports.gi.Gio;
 const Gtk = imports.gi.Gtk;
-const Lang = imports.lang;
+const GObject = imports.gi.GObject;
 
 const ExtensionUtils = imports.misc.extensionUtils;
 const Me = ExtensionUtils.getCurrentExtension();
-const Convenience = Me.imports.convenience;
+const Soup = imports.gi.Soup;
 const Currencies = Me.imports.currencies;
 
-let settings, options;
 
 function init() {
-    settings = Convenience.getSettings();
-    options = [
-        { id: 0, name: "Ounce(℥)" },
-        { id: 1, name: "Gram(g)" },
-        { id: 2, name: "Kilogram(kg)" }
-    ]
-}
-
-function buildComboBox(key, values, labeltext, type) {
-    let hbox = new Gtk.Box({
-        orientation: Gtk.Orientation.HORIZONTAL,
-        margin_top: 5
-    });
-
-    let setting_label = new Gtk.Label({
-        label: labeltext,
-        xalign: 0
-    });
-
-    let model = new Gtk.ListStore();
-    model.set_column_types([GObject.TYPE_STRING, GObject.TYPE_STRING]);
-    let setting_enum = new Gtk.ComboBox({ model: model });
-    setting_enum.get_style_context().add_class(Gtk.STYLE_CLASS_RAISED);
-    let renderer = new Gtk.CellRendererText();
-    setting_enum.pack_start(renderer, true);
-    setting_enum.add_attribute(renderer, 'text', 1);
-
-    switch (type) {
-        case "unit":
-            // append into ComboBox
-            for (let i = 0; i < values.length; i++) {
-                let item = values[i];
-                let iter = model.append();
-                model.set(iter, [0, 1], [item.id, item.name]);
-                if (item.id == settings.get_int(key)) {
-                    setting_enum.set_active_iter(iter);
-                }
-            }
-            // tracking value change
-            setting_enum.connect('changed', function (entry) {
-                let [success, iter] = setting_enum.get_active_iter();
-                if (!success)
-                    return;
-                let id = model.get_value(iter, 0);
-                settings.set_int(key, id);
-            });
-            break;
-        case "currencies":
-            // append into ComboBox
-            for (let i = 0; i < values.length; i++) {
-                let item = values[i];
-                let iter = model.append();
-                model.set(iter, [0, 1], [item.curr, item.name]);
-                if (item.curr == settings.get_string(key)) {
-                    setting_enum.set_active_iter(iter);
-                }
-            }
-            // tracking value change
-            setting_enum.connect('changed', function (entry) {
-                let [success, iter] = setting_enum.get_active_iter();
-                if (!success)
-                    return;
-                let id = model.get_value(iter, 0);
-                settings.set_string(key, id);
-            });
-            break;
-    }
-
-
-    hbox.pack_start(setting_label, true, true, 0);
-    hbox.add(setting_enum);
-
-    return hbox;
-}
-
-function change_value(widget) {
-    settings.set_int('refresh-interval', widget.get_value());
 }
 
 function buildPrefsWidget() {
-    let frame = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL, border_width: 10, spacing: 10 });
-    frame.add(buildComboBox("weight-uint", options, "Gold Weight Unit", "unit"));
-    frame.add(buildComboBox("currency", Currencies.hcCurrencies, "Gold Currency", "currencies"));
 
-    let label = new Gtk.Label({ label: "Refresh interval(Minutes)", xalign: 0 });
-    let scale = Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL, 1, 60, 1);
-    scale.set_value(settings.get_int("refresh-interval"));
-    scale.connect('value-changed', change_value);
+    // Copy the same GSettings code from `extension.js`
+    let gschema = Gio.SettingsSchemaSource.new_from_directory(
+        Me.dir.get_child('schemas').get_path(),
+        Gio.SettingsSchemaSource.get_default(),
+        false
+    );
 
-    frame.add(label);
-    frame.add(scale);
+    this.settings = new Gio.Settings({
+        settings_schema: gschema.lookup('org.gnome.shell.extensions.gold-price-monitor', true)
+    });
 
-    frame.show_all();
-    return frame;
+    // Create a parent widget that we'll return from this function
+    let prefsWidget = new Gtk.Grid({
+        margin_top: 18,
+        margin_bottom: 18,
+        margin_start: 18,
+        margin_end: 18,
+        column_spacing: 30,
+        row_spacing: 18,
+        visible: true
+    });
+    let session = new Soup.SessionAsync();
+
+
+    // Gold weight unit
+    let gold_weight_label = new Gtk.Label({
+        label: 'Gold weight unit:',
+        halign: Gtk.Align.START,
+        visible: true
+    });
+    prefsWidget.attach(gold_weight_label, 0, 1, 1, 1);
+    let unitToggle = null;
+    ['Ounce(℥)', 'Gram(g)', 'Kilogram(kg)'].forEach((mode, index) => {
+        let alignment = null;
+        if (index === 0) {
+            alignment = Gtk.Align.START;
+        } else if (index === 1) {
+            alignment = Gtk.Align.CENTER;
+        } else {
+            alignment = Gtk.Align.END;
+        }
+        unitToggle = new Gtk.ToggleButton({
+            label: mode,
+            group: unitToggle,
+            halign: Gtk.Align.END,
+        });
+        unitToggle.set_active(this.settings.get_value('weight-uint').unpack() === index);
+        prefsWidget.attach(unitToggle, 2 + index, 1, 1, 1);
+        unitToggle.connect('toggled', button => {
+            if (button.active) {
+                this.settings.set_int('weight-uint', index);
+            }
+        });
+    });
+
+    // Currency
+    let currency_label = new Gtk.Label({
+        label: 'Currency:',
+        halign: Gtk.Align.START,
+        visible: true
+    });
+    prefsWidget.attach(currency_label, 0, 2, 1, 1);
+    let currencies_combo = new Gtk.ComboBoxText({});
+    Currencies.currencies.forEach(item => {
+        currencies_combo.append(item.unit, item.name);
+        if (this.settings.get_value('currency').unpack() == item.unit) {
+            currencies_combo.set_active_id(item.unit);
+        }
+    });
+    prefsWidget.attach(currencies_combo, 1, 2, 4, 1);
+
+    // Refresh interval (seconds)
+    let refresh_label = new Gtk.Label({
+        label: 'Refresh interval(Minutes):',
+        halign: Gtk.Align.START,
+        visible: true
+    });
+    prefsWidget.attach(refresh_label, 0, 3, 1, 1);
+    let refresh_scale = Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL, 5, 60, 1);
+    refresh_scale.draw_value = true;
+    refresh_scale.set_value(this.settings.get_value('refresh-interval').unpack());
+    prefsWidget.attach(refresh_scale, 1, 3, 4, 1);
+
+    // Hide unit
+    let hide_unit_label = new Gtk.Label({
+        label: 'Hide units:',
+        halign: Gtk.Align.START,
+        visible: true
+    });
+    prefsWidget.attach(hide_unit_label, 0, 4, 1, 1);
+    let hide_unit_switch = new Gtk.Switch({ hexpand: true, halign: Gtk.Align.END });
+    hide_unit_switch.set_active(this.settings.get_boolean('hide-unit'));
+    prefsWidget.attach(hide_unit_switch, 4, 4, 1, 1);
+
+    // Position in panel
+    let panel_position_label = new Gtk.Label({
+        label: 'Position in panel:',
+        halign: Gtk.Align.START,
+        visible: true,
+    });
+    prefsWidget.attach(panel_position_label, 0, 5, 1, 1);
+    let panel_position_combo = buildComboBox(['Left', 'Center', 'Right'], this.settings.get_value('panel-position').unpack());
+    prefsWidget.attach(panel_position_combo, 1, 5, 4, 1);
+
+    // Events
+
+    currencies_combo.connect('changed', () => {
+        this.settings.set_string('panel-position', currencies_combo.active_id);
+    });
+
+    refresh_scale.connect('value-changed', () => {
+        this.settings.set_int('refresh-interval', refresh_scale.get_value());
+    });
+
+    hide_unit_switch.connect('state-set', () => {
+        this.settings.set_boolean('hide-unit', hide_unit_switch.active);
+    });
+
+    panel_position_combo.connect('changed', () => {
+        this.settings.set_string('panel-position', panel_position_combo.active_id);
+    });
+    // Return our widget which will be added to the window
+    return prefsWidget;
 }
 
+function buildComboBox(options, active) {
+    let comboBox = new Gtk.ComboBoxText({});
+    options.forEach(val => {
+        comboBox.append(val, val);
+        if (active == val) {
+            comboBox.set_active_id(val);
+        }
+    });
+    return comboBox;
+}
+
+function log(logs) {
+    print('[GoldPriceMonitor-Settings]', logs.join(', '));
+}
