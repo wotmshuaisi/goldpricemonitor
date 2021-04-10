@@ -36,8 +36,6 @@ function buildPrefsWidget() {
         row_spacing: 18,
         visible: true
     });
-    let session = new Soup.SessionAsync();
-
 
     // Gold weight unit
     let gold_weight_label = new Gtk.Label({
