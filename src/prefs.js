@@ -70,7 +70,7 @@ function buildPrefsWidget() {
 
     // Currency
     let currency_label = new Gtk.Label({
-        label: 'Currency:',
+        label: 'Currency (' + this.settings.get_value('currency').unpack() + ') :',
         halign: Gtk.Align.START,
         visible: true
     });
@@ -94,6 +94,7 @@ function buildPrefsWidget() {
         label: "Set",
         halign: Gtk.Align.END,
     });
+    currencies_set_button.get_style_context().add_class("suggested-action");
 
     prefsWidget.attach(currencies_dropdown, 1, 2, 3, 1);
     prefsWidget.attach(currencies_set_button, 4, 2, 1, 1);
@@ -137,8 +138,10 @@ function buildPrefsWidget() {
     //     this.settings.set_string('currency', currencies_combo.active_id);
     // });
 
+
     currencies_set_button.connect("clicked", () => {
         this.settings.set_string('currency', Currencies.currencies[currencies_dropdown.get_selected()].unit);
+        currency_label.label = 'Currency (' + this.settings.get_value('currency').unpack() + ') :';
     });
 
     refresh_scale.connect('value-changed', () => {
