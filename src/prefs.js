@@ -75,14 +75,28 @@ function buildPrefsWidget() {
         visible: true
     });
     prefsWidget.attach(currency_label, 0, 2, 1, 1);
-    let currencies_combo = new Gtk.ComboBoxText({});
-    Currencies.currencies.forEach(item => {
-        currencies_combo.append(item.unit, item.name);
-        if (this.settings.get_value('currency').unpack() == item.unit) {
-            currencies_combo.set_active_id(item.unit);
+    // let currencies_combo = new Gtk.ComboBoxText({});
+    // Currencies.currencies.forEach(item => {
+    //     currencies_combo.append(item.unit, item.name);
+    //     if (this.settings.get_value('currency').unpack() == item.unit) {
+    //         currencies_combo.set_active_id(item.unit);
+    //     }
+    // });
+    let currencies_dropdown = Gtk.DropDown.new_from_strings(Currencies.currencies.map((val) => {
+        return val.name;
+    }));
+    Currencies.currencies.forEach((item, index) => {
+        if (item.unit == this.settings.get_value('currency').unpack()) {
+            currencies_dropdown.selected = index;
         }
+    })
+    let currencies_set_button = new Gtk.Button({
+        label: "Set",
+        halign: Gtk.Align.END,
     });
-    prefsWidget.attach(currencies_combo, 1, 2, 4, 1);
+
+    prefsWidget.attach(currencies_dropdown, 1, 2, 3, 1);
+    prefsWidget.attach(currencies_set_button, 4, 2, 1, 1);
 
     // Refresh interval (seconds)
     let refresh_label = new Gtk.Label({
@@ -119,8 +133,12 @@ function buildPrefsWidget() {
 
     // Events
 
-    currencies_combo.connect('changed', () => {
-        this.settings.set_string('panel-position', currencies_combo.active_id);
+    // currencies_combo.connect('changed', () => {
+    //     this.settings.set_string('currency', currencies_combo.active_id);
+    // });
+
+    currencies_set_button.connect("clicked", () => {
+        this.settings.set_string('currency', Currencies.currencies[currencies_dropdown.get_selected()].unit);
     });
 
     refresh_scale.connect('value-changed', () => {
