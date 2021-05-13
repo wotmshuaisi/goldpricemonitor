@@ -75,13 +75,6 @@ function buildPrefsWidget() {
         visible: true
     });
     prefsWidget.attach(currency_label, 0, 2, 1, 1);
-    // let currencies_combo = new Gtk.ComboBoxText({});
-    // Currencies.currencies.forEach(item => {
-    //     currencies_combo.append(item.unit, item.name);
-    //     if (this.settings.get_value('currency').unpack() == item.unit) {
-    //         currencies_combo.set_active_id(item.unit);
-    //     }
-    // });
     let currencies_dropdown = Gtk.DropDown.new_from_strings(Currencies.currencies.map((val) => {
         return val.name;
     }));
@@ -90,14 +83,7 @@ function buildPrefsWidget() {
             currencies_dropdown.selected = index;
         }
     })
-    let currencies_set_button = new Gtk.Button({
-        label: "Set",
-        halign: Gtk.Align.END,
-    });
-    currencies_set_button.get_style_context().add_class("suggested-action");
-
-    prefsWidget.attach(currencies_dropdown, 1, 2, 3, 1);
-    prefsWidget.attach(currencies_set_button, 4, 2, 1, 1);
+    prefsWidget.attach(currencies_dropdown, 1, 2, 4, 1);
 
     // Refresh interval (seconds)
     let refresh_label = new Gtk.Label({
@@ -133,16 +119,9 @@ function buildPrefsWidget() {
     prefsWidget.attach(panel_position_combo, 1, 5, 4, 1);
 
     // Events
-
-    // currencies_combo.connect('changed', () => {
-    //     this.settings.set_string('currency', currencies_combo.active_id);
-    // });
-
-
-    currencies_set_button.connect("clicked", () => {
+    currencies_dropdown.connect("notify::selected", () => {
         this.settings.set_string('currency', Currencies.currencies[currencies_dropdown.get_selected()].unit);
-        currency_label.label = 'Currency (' + this.settings.get_value('currency').unpack() + ') :';
-    });
+    })
 
     refresh_scale.connect('value-changed', () => {
         this.settings.set_int('refresh-interval', refresh_scale.get_value());
