@@ -33,7 +33,6 @@ const PanelMenu = imports.ui.panelMenu;
 const PopupMenu = imports.ui.popupMenu;
 const Soup = imports.gi.Soup;
 const Mainloop = imports.mainloop;
-const Lang = imports.lang;
 
 const GoldPriceIndicator = GObject.registerClass(
     class GoldPriceIndicator extends PanelMenu.Button {
@@ -149,7 +148,7 @@ const GoldPriceIndicator = GObject.registerClass(
                 this.lastUpdate.label_actor.text = 'Last update: ' + new Date().toLocaleTimeString();;
             });
             this.lock = false;
-            Mainloop.timeout_add_seconds(this.settings.get_value('refresh-interval').unpack() * 60, Lang.bind(this, this.refreshData));
+            Mainloop.timeout_add_seconds(this.settings.get_value('refresh-interval').unpack() * 60, () => { this, this.refreshData });
         }
 
         log(logs) {
@@ -176,7 +175,7 @@ class Extension {
             Main.panel.addToStatusArea(this._uuid, this._indicator);
         }
 
-        this._indicator.settings.connect('changed::panel-position', Lang.bind(this, this.addToPanel));
+        this._indicator.settings.connect('changed::panel-position', () => { this.addToPanel() });
 
     }
 
