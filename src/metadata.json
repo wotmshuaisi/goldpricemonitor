@@ -4,7 +4,8 @@
     "uuid": "Gold_Price_Monitor@wotmshuaisi_github",
     "shell-version": [
         "40",
-        "41"
+        "41",
+        "42"
     ],
     "dangerous": false,
     "url": "https://github.com/wotmshuaisi/goldpricemonitor",

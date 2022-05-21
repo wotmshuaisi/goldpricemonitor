@@ -33,13 +33,14 @@ const PanelMenu = imports.ui.panelMenu;
 const PopupMenu = imports.ui.popupMenu;
 const Soup = imports.gi.Soup;
 const Mainloop = imports.mainloop;
+const GLib = imports.gi.GLib;
 
 const GoldPriceIndicator = GObject.registerClass(
     class GoldPriceIndicator extends PanelMenu.Button {
 
         _init() {
             super._init(0.0, _('GOldPriceIndicatorButton'));
-
+            this.periodic_task;
             this.lock = false;
             this.settings;
             this.extension_icon;
@@ -148,11 +149,19 @@ const GoldPriceIndicator = GObject.registerClass(
                 this.lastUpdate.label_actor.text = 'Last update: ' + new Date().toLocaleTimeString();;
             });
             this.lock = false;
-            Mainloop.timeout_add_seconds(this.settings.get_value('refresh-interval').unpack() * 60, () => { this, this.refreshData });
+            this.purgeBackgroundTask();
+            this.periodic_task = Mainloop.timeout_add_seconds(this.settings.get_value('refresh-interval').unpack() * 60, () => { this, this.refreshData });
         }
 
         log(logs) {
             global.log('[GoldPriceMonitor]', logs.join(', '));
+        }
+
+        purgeBackgroundTask() {
+            if (this.periodic_task) {
+                GLib.Source.remove(this.periodic_task);
+                this.periodic_task.periodic_task = null;
+            }
         }
 
     });
@@ -180,6 +189,7 @@ class Extension {
     }
 
     disable() {
+        this._indicator.purgeBackgroundTask();
         this._indicator.destroy();
         this._indicator = null;
     }
