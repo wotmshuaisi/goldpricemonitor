@@ -160,7 +160,7 @@ const GoldPriceIndicator = GObject.registerClass(
         purgeBackgroundTask() {
             if (this.periodic_task) {
                 GLib.Source.remove(this.periodic_task);
-                this.periodic_task.periodic_task = null;
+                this.periodic_task = null;
             }
         }
 
