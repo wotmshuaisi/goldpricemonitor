@@ -1,12 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
 <schemalist>
   <schema id="org.gnome.shell.extensions.gold-price-monitor" path="/org/gnome/shell/extensions/gold_price_monitor/">
-    <key name="weight-uint" type="i">
+    <key name="weight-unit" type="i">
       <default>0</default>
       <summary>Weight Unit</summary>
       <description>Gold Weight Unit.</description>
     </key>
-    <key name="currency" type="s">
-      <default>"USD"</default>
+    <key name="currency" type="i">
+      <default>0</default>
       <summary>Currency</summary>
       <description>Gold Currency.</description>
     </key>
@@ -18,8 +19,8 @@
     <key name="hide-unit" type="b">
       <default>false</default>
     </key>
-    <key name="panel-position" type="s">
-      <default>"Right"</default>
+    <key name="panel-position" type="i">
+      <default>2</default>
     </key>
   </schema>
 </schemalist>

@@ -16,253 +16,205 @@
  * SPDX-License-Identifier: GPL-2.0-or-later
  */
 
-/* exported init */
+import GObject from "gi://GObject";
+import St from "gi://St";
+import Clutter from "gi://Clutter";
+import GLib from "gi://GLib";
+import Soup from "gi://Soup?version=3.0";
 
-const GETTEXT_DOMAIN = "goldprice-indicator-extension";
+import { Extension, gettext as _ } from "resource:///org/gnome/shell/extensions/extension.js";
+import * as PanelMenu from "resource:///org/gnome/shell/ui/panelMenu.js";
+import * as PopupMenu from "resource:///org/gnome/shell/ui/popupMenu.js";
+import * as Util from "resource:///org/gnome/shell/misc/util.js";
+import * as Main from "resource:///org/gnome/shell/ui/main.js";
+import * as Currencies from "./currencies.js";
 
-const { GObject, St, Gtk, Clutter } = imports.gi;
-const Gio = imports.gi.Gio;
+const Indicator = GObject.registerClass(
+  class Indicator extends PanelMenu.Button {
+    displayText = "...";
 
-const Gettext = imports.gettext.domain(GETTEXT_DOMAIN);
-const _ = Gettext.gettext;
+    _get_settings() {
+      this._settings = Extension.lookupByUUID("Gold_Price_Monitor@wotmshuaisi_github").getSettings();
+    }
 
-const ExtensionUtils = imports.misc.extensionUtils;
-const Me = ExtensionUtils.getCurrentExtension();
-const Main = imports.ui.main;
-const PanelMenu = imports.ui.panelMenu;
-const PopupMenu = imports.ui.popupMenu;
-const Soup = imports.gi.Soup;
-const Mainloop = imports.mainloop;
-const GLib = imports.gi.GLib;
-
-const GoldPriceIndicator = GObject.registerClass(
-  class GoldPriceIndicator extends PanelMenu.Button {
     _init() {
-      super._init(0.0, _("GOldPriceIndicatorButton"));
-      this.periodic_task;
+      super._init(0.0, _("Gold Price Indicator"));
+      this._get_settings();
+      this._httpSession = new Soup.Session();
+      this.api_url = "https://data-asg.goldprice.org/GetData/";
       this.lock = false;
-      this.settings;
-      this.extension_icon;
       this.price;
       this.lastUpdate;
-      this.menu;
-      this.api_url = "https://data-asg.goldprice.org/GetData/";
-      this.WEIGHT_OPTIONS = {
-        0: "℥",
-        1: "g",
-        2: "kg",
-      };
-      this._httpSession = new Soup.Session();
 
-      let gschema = Gio.SettingsSchemaSource.new_from_directory(
-        Me.dir.get_child("schemas").get_path(),
-        Gio.SettingsSchemaSource.get_default(),
-        false
-      );
-      // settings
-      this.settings = new Gio.Settings({
-        settings_schema: gschema.lookup(
-          "org.gnome.shell.extensions.gold-price-monitor",
-          true
-        ),
-      });
-
-      // Indicator
-      let box = new St.BoxLayout({ style_class: "panel-status-menu-box" });
-
-      // Icon + Label
-      // this.extension_icon = new St.Icon({
-      //     // icon_name: 'face-smile-symbolic',
-      //     icon_name: 'content-loading-symbolic',
-      //     style_class: 'system-status-icon',
-      // });
+      // Components
       this.price = new St.Label({
         text: "...",
         y_align: Clutter.ActorAlign.CENTER,
       });
-
-      // drop-down menu
-      this.lastUpdate = new PopupMenu.PopupMenuItem(_("Last update:"));
-      let refresh = new PopupMenu.PopupMenuItem(_("Refresh"));
-
-      refresh.connect("activate", () => {
-        this.refreshData();
+      this.lastUpdate = new PopupMenu.PopupMenuItem(_(`Last update: ...`));
+      let refreshBtn = new PopupMenu.PopupMenuItem(_(`Refresh`));
+      let settingsBtn = new PopupMenu.PopupMenuItem(_(`Settings`));
+      // Events
+      refreshBtn.connect("activate", () => {
+        this._fetch_data();
       });
-
-      // set widgets
+      settingsBtn.connect("activate", () => {
+        Util.spawn(["gnome-extensions", "prefs", "Gold_Price_Monitor@wotmshuaisi_github"]);
+      });
+      // Display
       this.menu.addMenuItem(this.lastUpdate);
-      this.menu.addMenuItem(refresh);
-
-      // box.add_child(this.extension_icon);
-      box.add_child(this.price);
-      box.add_child(PopupMenu.arrowIcon(St.Side.BOTTOM));
-      this.add_child(box);
-
-      this.refreshData();
+      this.menu.addMenuItem(refreshBtn);
+      this.menu.addMenuItem(settingsBtn);
+      this.add_child(this.price);
+      // Event loop
+      this._fetch_data();
+      this.backgroundTask = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, this._get_refresh_interval() * 60, () => {
+        this._fetch_data();
+        return GLib.SOURCE_CONTINUE;
+      });
     }
 
-    buildRequest() {
-      const url =
-        this.api_url + this.settings.get_value("currency").unpack() + "-XAU/1";
+    _get_unit() {
+      switch (this._settings.get_value("weight-unit").unpack()) {
+        case 0:
+          return "℥";
+        case 1:
+          return "g";
+        case 2:
+          return "kg";
+      }
+      return "℥";
+    }
+
+    _get_currency() {
+      const cIdx = this._settings.get_value("currency").unpack();
+      return Currencies.list()[cIdx].unit;
+    }
+
+    _get_refresh_interval() {
+      return this._settings.get_value("refresh-interval").unpack();
+    }
+
+    _build_req() {
+      const url = `${this.api_url}${this._get_currency()}-XAU/1`;
       let request = Soup.Message.new("GET", url);
       request.request_headers.append("Cache-Control", "no-cache");
-      request.request_headers.append(
-        "User-Agent",
-        "Mozilla/5.0 (Windows NT 6.3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/83.0.4103.84 Safari/537.36"
-      );
+      request.request_headers.append("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.6831.62 Safari/537.36");
 
-      // this.log([url]); // debug
+      this._log([url]); // debug
       return request;
     }
 
-    refreshData() {
+    _fetch_data() {
       if (this.lock) {
         return;
       }
       this.lock = true;
-      let msg = this.buildRequest();
-      this._httpSession.send_and_read_async(
-        msg,
-        GLib.PRIORITY_DEFAULT,
-        null,
-        (_, response) => {
-          response = new TextDecoder("utf-8").decode(
-            this._httpSession.send_and_read_finish(response).get_data()
-          );
+      let msg = this._build_req();
+      this._httpSession.send_and_read_async(msg, GLib.PRIORITY_DEFAULT, null, (_, response) => {
+        response = new TextDecoder("utf-8").decode(this._httpSession.send_and_read_finish(response).get_data());
 
-          if (msg.get_status() > 299) {
-            this.log(["Remote server error:", msg.get_status(), response]);
-            return;
-          }
-
-          const json_data = JSON.parse(response);
-          if (json_data.length === 0) {
-            this.log(["Remote server error:", response]);
-            return;
-          }
-
-          let latest_price = Number.parseFloat(json_data[0].split(",")[1]);
-          switch (this.settings.get_value("weight-uint").unpack()) {
-            case 1:
-              latest_price = latest_price / 31.1034768;
-              break;
-            case 2:
-              latest_price = (latest_price / 31.1034768) * 1000;
-              break;
-          }
-
-          latest_price = latest_price.toFixed(3);
-          if (!this.settings.get_value("hide-unit").unpack()) {
-            latest_price +=
-              "(" +
-              this.settings.get_value("currency").unpack() +
-              ") / " +
-              this.WEIGHT_OPTIONS[
-                this.settings.get_value("weight-uint").unpack()
-              ];
-          }
-
-          this.log([
-            `Update price from: ${this.price.text} to ${latest_price}`,
-          ]);
-
-          this.price.text = latest_price;
-
-          this.lastUpdate.label_actor.text =
-            "Last update: " + new Date().toLocaleTimeString();
+        if (msg.get_status() > 299) {
+          this._log(["Remote server error:", msg.get_status(), response]);
+          return;
         }
-      );
+
+        const json_data = JSON.parse(response);
+        if (json_data.length === 0) {
+          this._log(["Remote server error:", response]);
+          return;
+        }
+
+        let latest_price = Number.parseFloat(json_data[0].split(",")[1]);
+        switch (this._settings.get_value("weight-unit").unpack()) {
+          case 1:
+            latest_price = latest_price / 31.1034768;
+            break;
+          case 2:
+            latest_price = (latest_price / 31.1034768) * 1000;
+            break;
+        }
+
+        latest_price = latest_price.toFixed(3);
+        if (!this._settings.get_value("hide-unit").unpack()) {
+          latest_price += `(${this._get_currency()})/${this._get_unit()}`;
+        }
+
+        this._log([`Update price from: ${this.price.text} to ${latest_price}`]);
+
+        this.price.text = latest_price;
+
+        this.lastUpdate.label_actor.text = "Last update: " + new Date().toLocaleTimeString();
+      });
       this.lock = false;
-      this.purgeBackgroundTask();
-      this.periodic_task = Mainloop.timeout_add_seconds(
-        this.settings.get_value("refresh-interval").unpack() * 60,
-        () => {
-          this, this.refreshData;
-        }
-      );
     }
 
-    log(logs) {
-      global.log("[GoldPriceMonitor]", logs.join(", "));
+    _log(logs) {
+      console.debug("[GoldPriceMonitor]", logs.join(", "));
+      // Main.notifyError("GoldPriceMonitor", logs.join(", "));
     }
 
-    purgeBackgroundTask() {
-      if (this.periodic_task) {
-        GLib.Source.remove(this.periodic_task);
-        this.periodic_task = null;
-      }
+    _onDestroy() {
+      // Remove the background taks
+      GLib.source_remove(this.backgroundTask);
+      super._onDestroy();
     }
   }
 );
 
-class Extension {
-  constructor(uuid) {
-    this._uuid = uuid;
-    ExtensionUtils.initTranslations(GETTEXT_DOMAIN);
-  }
-
+export default class GoldPriceIndicatorExtension extends Extension {
   enable() {
-    this._indicator = new GoldPriceIndicator();
+    this._settings = this.getSettings();
+    this.run();
 
-    const indicator_position = this._indicator.settings
-      .get_value("panel-position")
-      .unpack();
-    if (indicator_position === "Left") {
-      Main.panel.addToStatusArea(
-        this._uuid,
-        this._indicator,
-        Main.panel._leftBox.get_children().length,
-        "left"
-      );
-    } else if (indicator_position === "Center") {
-      Main.panel.addToStatusArea(
-        this._uuid,
-        this._indicator,
-        Main.panel._centerBox.get_children().length,
-        "center"
-      );
-    } else {
-      Main.panel.addToStatusArea(this._uuid, this._indicator);
-    }
+    this._settings.connect("changed::weight-unit", (settings, key) => {
+      this.disable();
+      this.run();
+    });
 
-    this._indicator.settings.connect("changed::panel-position", () => {
-      this.addToPanel();
+    this._settings.connect("changed::currency", (settings, key) => {
+      this.disable();
+      this.run();
+    });
+
+    this._settings.connect("changed::refresh-interval", (settings, key) => {
+      this.disable();
+      this.run();
+    });
+
+    this._settings.connect("changed::hide-unit", (settings, key) => {
+      this.disable();
+      this.run();
+    });
+
+    this._settings.connect("changed::panel-position", (settings, key) => {
+      this.disable();
+      this.run();
     });
   }
 
+  run() {
+    this._indicator = new Indicator();
+
+    this.addToPanel(this._settings.get_value("panel-position").unpack());
+  }
+
   disable() {
-    this._indicator.purgeBackgroundTask();
     this._indicator.destroy();
     this._indicator = null;
   }
 
-  addToPanel() {
-    this._indicator.destroy();
-    this._indicator = null;
-    this._indicator = new GoldPriceIndicator();
-    const indicator_position = this._indicator.settings
-      .get_value("panel-position")
-      .unpack();
-    if (indicator_position === "Left") {
-      Main.panel.addToStatusArea(
-        this._uuid,
-        this._indicator,
-        Main.panel._leftBox.get_children().length,
-        "left"
-      );
-    } else if (indicator_position === "Center") {
-      Main.panel.addToStatusArea(
-        this._uuid,
-        this._indicator,
-        Main.panel._centerBox.get_children().length,
-        "center"
-      );
-    } else {
-      Main.panel.addToStatusArea(this._uuid, this._indicator);
+  addToPanel(indicator_position) {
+    switch (indicator_position) {
+      case 0:
+        Main.panel.addToStatusArea(this.uuid, this._indicator, Main.panel._leftBox.get_children().length, "left");
+        break;
+      case 1:
+        Main.panel.addToStatusArea(this.uuid, this._indicator, Main.panel._centerBox.get_children().length, "center");
+        break;
+      case 2:
+        Main.panel.addToStatusArea(this.uuid, this._indicator);
+        break;
     }
   }
-}
-
-function init(meta) {
-  return new Extension(meta.uuid);
 }

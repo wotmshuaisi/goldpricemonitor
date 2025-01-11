@@ -1,4 +1,5 @@
-var currencies = [
+export function list() {
+  return [
     { unit: "USD", name: " United States Dollar" },
     { unit: "AED", name: "United Arab Emirates Dirham" },
     { unit: "AFN", name: "Afghan Afghani" },
@@ -158,4 +159,5 @@ var currencies = [
     { unit: "YER", name: "Yemeni Rial" },
     { unit: "ZAR", name: "South African Rand" },
     { unit: "ZMW", name: "Zambian Kwacha" },
-];
+  ];
+}

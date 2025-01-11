@@ -1,154 +1,119 @@
-'use strict';
+import Gio from "gi://Gio";
+import Adw from "gi://Adw";
 
-const Gio = imports.gi.Gio;
-const Gtk = imports.gi.Gtk;
-const GObject = imports.gi.GObject;
+import Gtk from "gi://Gtk?version=4.0";
 
-const ExtensionUtils = imports.misc.extensionUtils;
-const Me = ExtensionUtils.getCurrentExtension();
-const Soup = imports.gi.Soup;
-const Currencies = Me.imports.currencies;
+import { ExtensionPreferences, gettext as _ } from "resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js";
+import * as Currencies from "./currencies.js";
 
-
-function init() {
-}
-
-function buildPrefsWidget() {
-
-    // Copy the same GSettings code from `extension.js`
-    let gschema = Gio.SettingsSchemaSource.new_from_directory(
-        Me.dir.get_child('schemas').get_path(),
-        Gio.SettingsSchemaSource.get_default(),
-        false
-    );
-
-    this.settings = new Gio.Settings({
-        settings_schema: gschema.lookup('org.gnome.shell.extensions.gold-price-monitor', true)
+export default class ExamplePreferences extends ExtensionPreferences {
+  fillPreferencesWindow(window) {
+    this._settings = this.getSettings();
+    // Create a preferences page, with a single group
+    const page = new Adw.PreferencesPage({
+      title: _("Gold Price Monitor - Settings"),
+      icon_name: "dialog-information-symbolic",
     });
+    window.add(page);
 
-    // Create a parent widget that we'll return from this function
-    let prefsWidget = new Gtk.Grid({
-        margin_top: 18,
-        margin_bottom: 18,
-        margin_start: 18,
-        margin_end: 18,
-        column_spacing: 30,
-        row_spacing: 18,
-        visible: true
-    });
-
-    // Gold weight unit
-    let gold_weight_label = new Gtk.Label({
-        label: 'Gold weight unit:',
-        halign: Gtk.Align.START,
-        visible: true
-    });
-    prefsWidget.attach(gold_weight_label, 0, 1, 1, 1);
-    let unitToggle = null;
-    ['Ounce(℥)', 'Gram(g)', 'Kilogram(kg)'].forEach((mode, index) => {
-        let alignment = null;
-        if (index === 0) {
-            alignment = Gtk.Align.START;
-        } else if (index === 1) {
-            alignment = Gtk.Align.CENTER;
-        } else {
-            alignment = Gtk.Align.END;
-        }
-        unitToggle = new Gtk.ToggleButton({
-            label: mode,
-            group: unitToggle,
-            halign: Gtk.Align.END,
-        });
-        unitToggle.set_active(this.settings.get_value('weight-uint').unpack() === index);
-        prefsWidget.attach(unitToggle, 2 + index, 1, 1, 1);
-        unitToggle.connect('toggled', button => {
-            if (button.active) {
-                this.settings.set_int('weight-uint', index);
-            }
-        });
-    });
+    // Weight Unit
+    page.add(this._create_weight_unit_options());
 
     // Currency
-    let currency_label = new Gtk.Label({
-        label: 'Currency (' + this.settings.get_value('currency').unpack() + ') :',
-        halign: Gtk.Align.START,
-        visible: true
-    });
-    prefsWidget.attach(currency_label, 0, 2, 1, 1);
-    let currencies_dropdown = Gtk.DropDown.new_from_strings(Currencies.currencies.map((val) => {
-        return val.name;
-    }));
-    Currencies.currencies.forEach((item, index) => {
-        if (item.unit == this.settings.get_value('currency').unpack()) {
-            currencies_dropdown.selected = index;
-        }
-    })
-    prefsWidget.attach(currencies_dropdown, 1, 2, 4, 1);
+    page.add(this._create_currency_unit_options());
 
-    // Refresh interval (seconds)
-    let refresh_label = new Gtk.Label({
-        label: 'Refresh interval(Minutes):',
-        halign: Gtk.Align.START,
-        visible: true
-    });
-    prefsWidget.attach(refresh_label, 0, 3, 1, 1);
-    let refresh_scale = Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL, 5, 60, 1);
-    refresh_scale.draw_value = true;
-    refresh_scale.set_value(this.settings.get_value('refresh-interval').unpack());
-    prefsWidget.attach(refresh_scale, 1, 3, 4, 1);
+    // Refresh interval
+    page.add(this._create_refresh_interval_options());
 
     // Hide unit
-    let hide_unit_label = new Gtk.Label({
-        label: 'Hide units:',
-        halign: Gtk.Align.START,
-        visible: true
+    page.add(this._create_hide_unit_options());
+
+    // Panel position
+    page.add(this._create_panel_position_options());
+  }
+
+  _create_weight_unit_options() {
+    const weightGroup = new Adw.PreferencesGroup({ title: "Weight Unit" });
+
+    const weightModel = new Gtk.StringList();
+    ["Ounce(℥)", "Gram(g)", "Kilogram(kg)"].forEach((unit) => weightModel.append(unit));
+
+    const weightRow = new Adw.ComboRow({
+      title: "Select Weight Unit",
+      subtitle: "Choose the unit for gold weight.",
+      model: weightModel,
     });
-    prefsWidget.attach(hide_unit_label, 0, 4, 1, 1);
-    let hide_unit_switch = new Gtk.Switch({ hexpand: true, halign: Gtk.Align.END });
-    hide_unit_switch.set_active(this.settings.get_boolean('hide-unit'));
-    prefsWidget.attach(hide_unit_switch, 4, 4, 1, 1);
+    this._settings.bind("weight-unit", weightRow, "selected", Gio.SettingsBindFlags.NO_SENSETIVITY);
 
-    // Position in panel
-    let panel_position_label = new Gtk.Label({
-        label: 'Position in panel:',
-        halign: Gtk.Align.START,
-        visible: true,
+    weightGroup.add(weightRow);
+
+    return weightGroup;
+  }
+
+  _create_currency_unit_options() {
+    const currencyGroup = new Adw.PreferencesGroup({ title: "Currency" });
+
+    const currencyModel = new Gtk.StringList();
+    Currencies.list().forEach((item) => currencyModel.append(item.name));
+
+    const currencyRow = new Adw.ComboRow({
+      title: "Select Currency",
+      subtitle: "Choose the display price currency.",
+      model: currencyModel,
     });
-    prefsWidget.attach(panel_position_label, 0, 5, 1, 1);
-    let panel_position_combo = buildComboBox(['Left', 'Center', 'Right'], this.settings.get_value('panel-position').unpack());
-    prefsWidget.attach(panel_position_combo, 1, 5, 4, 1);
+    this._settings.bind("currency", currencyRow, "selected", Gio.SettingsBindFlags.NO_SENSETIVITY);
 
-    // Events
-    currencies_dropdown.connect("notify::selected", () => {
-        this.settings.set_string('currency', Currencies.currencies[currencies_dropdown.get_selected()].unit);
-    })
+    currencyGroup.add(currencyRow);
 
-    refresh_scale.connect('value-changed', () => {
-        this.settings.set_int('refresh-interval', refresh_scale.get_value());
+    return currencyGroup;
+  }
+
+  _create_refresh_interval_options() {
+    const refreshGroup = new Adw.PreferencesGroup({ title: "Refresh Interval" });
+
+    const refreshRow = new Adw.SpinRow({
+      title: "Refresh Interval (Minutes)",
+      subtitle: "Set how often to refresh the gold price.",
+      adjustment: new Gtk.Adjustment({
+        lower: 1,
+        upper: 120,
+        step_increment: 1,
+      }),
     });
+    this._settings.bind("refresh-interval", refreshRow, "value", Gio.SettingsBindFlags.DEFAULT);
 
-    hide_unit_switch.connect('state-set', () => {
-        this.settings.set_boolean('hide-unit', hide_unit_switch.active);
+    refreshGroup.add(refreshRow);
+    return refreshGroup;
+  }
+
+  _create_hide_unit_options() {
+    const hideUnitGroup = new Adw.PreferencesGroup({ title: "Display Options" });
+
+    const hideUnitRow = new Adw.SwitchRow({
+      title: "Hide Unit",
+      subtitle: "Toggle to hide or show the weight unit in the display.",
+      active: this._settings.get_boolean("hide-unit"),
     });
+    this._settings.bind("hide-unit", hideUnitRow, "active", Gio.SettingsBindFlags.DEFAULT);
 
-    panel_position_combo.connect('changed', () => {
-        this.settings.set_string('panel-position', panel_position_combo.active_id);
+    hideUnitGroup.add(hideUnitRow);
+    return hideUnitGroup;
+  }
+
+  _create_panel_position_options() {
+    const positionGroup = new Adw.PreferencesGroup({ title: "Panel Position" });
+
+    const positionModel = new Gtk.StringList();
+    ["Left", "Center", "Right"].forEach((pos) => positionModel.append(pos));
+
+    const positionRow = new Adw.ComboRow({
+      title: "Panel Position",
+      subtitle: "Select the position of the indicator on the panel.",
+      model: positionModel,
     });
-    // Return our widget which will be added to the window
-    return prefsWidget;
-}
+    this._settings.bind("panel-position", positionRow, "selected", Gio.SettingsBindFlags.NO_SENSETIVITY);
 
-function buildComboBox(options, active) {
-    let comboBox = new Gtk.ComboBoxText({});
-    options.forEach(val => {
-        comboBox.append(val, val);
-        if (active == val) {
-            comboBox.set_active_id(val);
-        }
-    });
-    return comboBox;
-}
-
-function log(logs) {
-    print('[GoldPriceMonitor-Settings]', logs.join(', '));
+    positionGroup.add(positionRow);
+    return positionGroup;
+  }
 }
