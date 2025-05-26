@@ -1,26 +1,8 @@
-/* extension.js
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- *
- * SPDX-License-Identifier: GPL-2.0-or-later
- */
-
 import GObject from "gi://GObject";
 import St from "gi://St";
 import Clutter from "gi://Clutter";
 import GLib from "gi://GLib";
-import Soup from "gi://Soup?version=3.0";
+import Soup from "gi://Soup";
 
 import { Extension, gettext as _ } from "resource:///org/gnome/shell/extensions/extension.js";
 import * as PanelMenu from "resource:///org/gnome/shell/ui/panelMenu.js";
@@ -33,14 +15,10 @@ const Indicator = GObject.registerClass(
   class Indicator extends PanelMenu.Button {
     displayText = "...";
 
-    _get_settings() {
-      this._settings = Extension.lookupByUUID("Gold_Price_Monitor@wotmshuaisi_github").getSettings();
-    }
-
-    _init() {
+    _init(ext) {
       super._init(0.0, _("Gold Price Indicator"));
-      this._get_settings();
       this._httpSession = new Soup.Session();
+      this._ext = ext;
       this.api_url = "https://data-asg.goldprice.org/GetData/";
       this.lock = false;
       this.price;
@@ -59,7 +37,7 @@ const Indicator = GObject.registerClass(
         this._fetch_data();
       });
       settingsBtn.connect("activate", () => {
-        Util.spawn(["gnome-extensions", "prefs", "Gold_Price_Monitor@wotmshuaisi_github"]);
+        this._ext.openPreferences();
       });
       // Display
       this.menu.addMenuItem(this.lastUpdate);
@@ -74,8 +52,12 @@ const Indicator = GObject.registerClass(
       });
     }
 
+    _get_setting_val(key) {
+      return this._ext._settings.get_value(key).unpack();
+    }
+
     _get_unit() {
-      switch (this._settings.get_value("weight-unit").unpack()) {
+      switch (this._get_setting_val("weight-unit")) {
         case 0:
           return "℥";
         case 1:
@@ -87,12 +69,12 @@ const Indicator = GObject.registerClass(
     }
 
     _get_currency() {
-      const cIdx = this._settings.get_value("currency").unpack();
+      const cIdx = this._get_setting_val("currency");
       return Currencies.list()[cIdx].unit;
     }
 
     _get_refresh_interval() {
-      return this._settings.get_value("refresh-interval").unpack();
+      return this._get_setting_val("refresh-interval");
     }
 
     _build_req() {
@@ -126,7 +108,7 @@ const Indicator = GObject.registerClass(
         }
 
         let latest_price = Number.parseFloat(json_data[0].split(",")[1]);
-        switch (this._settings.get_value("weight-unit").unpack()) {
+        switch (this._get_setting_val("weight-unit")) {
           case 1:
             latest_price = latest_price / 31.1034768;
             break;
@@ -136,7 +118,7 @@ const Indicator = GObject.registerClass(
         }
 
         latest_price = latest_price.toFixed(3);
-        if (!this._settings.get_value("hide-unit").unpack()) {
+        if (!this._get_setting_val("hide-unit")) {
           latest_price += `(${this._get_currency()})/${this._get_unit()}`;
         }
 
@@ -154,10 +136,10 @@ const Indicator = GObject.registerClass(
       // Main.notifyError("GoldPriceMonitor", logs.join(", "));
     }
 
-    _onDestroy() {
+    destroy() {
       // Remove the background taks
       GLib.source_remove(this.backgroundTask);
-      super._onDestroy();
+      super.destroy();
     }
   }
 );
@@ -165,43 +147,23 @@ const Indicator = GObject.registerClass(
 export default class GoldPriceIndicatorExtension extends Extension {
   enable() {
     this._settings = this.getSettings();
-    this.run();
-
-    this._settings.connect("changed::weight-unit", (settings, key) => {
-      this.disable();
-      this.run();
-    });
-
-    this._settings.connect("changed::currency", (settings, key) => {
-      this.disable();
-      this.run();
-    });
-
-    this._settings.connect("changed::refresh-interval", (settings, key) => {
-      this.disable();
-      this.run();
-    });
-
-    this._settings.connect("changed::hide-unit", (settings, key) => {
-      this.disable();
-      this.run();
-    });
-
-    this._settings.connect("changed::panel-position", (settings, key) => {
-      this.disable();
-      this.run();
-    });
-  }
-
-  run() {
-    this._indicator = new Indicator();
-
+    this._indicator = new Indicator(this);
     this.addToPanel(this._settings.get_value("panel-position").unpack());
+
+    ["weight-unit", "currency", "refresh-interval", "hide-unit", "panel-position"].forEach((key) => {
+      this._settings.connect(`changed::${key}`, () => {
+        this.disable();
+        this.enable();
+      });
+    });
   }
 
   disable() {
-    this._indicator.destroy();
-    this._indicator = null;
+    if (this._indicator) {
+      this._indicator.destroy();
+      this._indicator = null;
+    }
+    this._settings = null;
   }
 
   addToPanel(indicator_position) {

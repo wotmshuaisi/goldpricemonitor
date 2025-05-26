@@ -30,6 +30,10 @@ export default class ExamplePreferences extends ExtensionPreferences {
 
     // Panel position
     page.add(this._create_panel_position_options());
+
+    window.connect("close-request", () => {
+      this._settings = null;
+    });
   }
 
   _create_weight_unit_options() {
