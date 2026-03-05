@@ -138,7 +138,7 @@ export default class ExamplePreferences extends ExtensionPreferences {
       subtitle: "Select API provider.",
       model: apiproviderModel,
     });
-    this._settings.bind("panel-position", apiproviderRow, "selected", Gio.SettingsBindFlags.NO_SENSETIVITY);
+    this._settings.bind("api-provider", apiproviderRow, "selected", Gio.SettingsBindFlags.NO_SENSETIVITY);
 
     apiproviderGroup.add(apiproviderRow);
     return apiproviderGroup;

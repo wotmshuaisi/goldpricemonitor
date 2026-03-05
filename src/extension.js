@@ -15,8 +15,8 @@ const Indicator = GObject.registerClass(
   class Indicator extends PanelMenu.Button {
     displayText = "...";
     APIS = [
-      "https://data-asg.goldprice.org/GetData/",
-      "https://www.goldapi.io/api/"
+      "https://data-asg.goldprice.org/GetData/", // primary provider (no key required)
+      "https://www.goldapi.io/api/"              // secondary provider (requires API key)
     ]
 
     _init(ext) {
@@ -50,10 +50,12 @@ const Indicator = GObject.registerClass(
       this.add_child(this.price);
       // Event loop
       this._fetch_data();
-      this.backgroundTask = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, this._get_refresh_interval() * 60, () => {
-        this._fetch_data();
-        return GLib.SOURCE_CONTINUE;
-      });
+      if (this._get_refresh_interval() > 0) {
+        this.backgroundTask = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, this._get_refresh_interval() * 3600, () => {
+          this._fetch_data();
+          return GLib.SOURCE_CONTINUE;
+        });
+      }
     }
 
     _get_setting_val(key) {
@@ -81,9 +83,40 @@ const Indicator = GObject.registerClass(
       return this._get_setting_val("refresh-interval");
     }
 
+    // helper accessors for the settings we added
+    _get_api_provider() {
+      return this._get_setting_val("api-provider");
+    }
+
+    _get_api_key() {
+      return this._get_setting_val("api-key");
+    }
+
     _build_req() {
-      const url = `${this.api_url}${this._get_currency()}-XAU/1`;
-      let request = Soup.Message.new("GET", url);
+      const currency = this._get_currency();
+      const provider = this._get_api_provider();
+      let request = null;
+      // choose base url depending on selected provider
+      switch (provider) {
+        case 1:
+          // goldapi.io
+          this.api_url = this.APIS[1];
+          // goldapi accepts /XAU/{currency}
+          var url = `${this.api_url}XAU/${currency}`;
+          request = Soup.Message.new("GET", url);
+          // add the API key header for goldapi.io if provided
+          const key = this._get_api_key();
+          if (key && key.length > 0) {
+            request.request_headers.append("x-access-token", key);
+          }
+          break;
+        default:
+          // goldprice.org
+          this.api_url = this.APIS[0];
+          var url = `${this.api_url}${currency}-XAU/1`;
+          request = Soup.Message.new("GET", url);
+          break;
+      }
       request.request_headers.append("Cache-Control", "no-cache");
       request.request_headers.append("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.6831.62 Safari/537.36");
 
@@ -106,12 +139,31 @@ const Indicator = GObject.registerClass(
         }
 
         const json_data = JSON.parse(response);
-        if (json_data.length === 0) {
-          this._log(["Remote server error:", response]);
-          return;
+        let latest_price;
+
+        // provider-specific parsing
+        switch (this._get_api_provider()) {
+          case 0:
+            // goldprice.org returns an array of comma separated strings
+            if (!Array.isArray(json_data) || json_data.length === 0) {
+              this._log(["Remote server error:", response]);
+              return;
+            }
+            latest_price = Number.parseFloat(json_data[0].split(",")[1]);
+            break;
+          case 1:
+            // goldapi.io returns an object with a `price` property
+            if (!json_data || typeof json_data.price === "undefined") {
+              this._log(["Remote server error:", response]);
+              return;
+            }
+            latest_price = Number.parseFloat(json_data.price);
+            break;
+          default:
+            latest_price = 0.0
+            break;
         }
 
-        let latest_price = Number.parseFloat(json_data[0].split(",")[1]);
         switch (this._get_setting_val("weight-unit")) {
           case 1:
             latest_price = latest_price / 31.1034768;
@@ -154,7 +206,7 @@ export default class GoldPriceIndicatorExtension extends Extension {
     this._indicator = new Indicator(this);
     this.addToPanel(this._settings.get_value("panel-position").unpack());
 
-    ["weight-unit", "currency", "refresh-interval", "hide-unit", "panel-position"].forEach((key) => {
+    ["weight-unit", "currency", "refresh-interval", "hide-unit", "panel-position", "api-provider", "api-key"].forEach((key) => {
       this._settings.connect(`changed::${key}`, () => {
         this.disable();
         this.enable();
