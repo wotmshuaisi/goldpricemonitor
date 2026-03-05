@@ -14,16 +14,17 @@ import * as Currencies from "./currencies.js";
 const Indicator = GObject.registerClass(
   class Indicator extends PanelMenu.Button {
     displayText = "...";
-    APIS = [
-      "https://data-asg.goldprice.org/GetData/", // primary provider (no key required)
-      "https://www.goldapi.io/api/"              // secondary provider (requires API key)
-    ]
+
 
     _init(ext) {
       super._init(0.0, _("Gold Price Indicator"));
       this._httpSession = new Soup.Session();
       this._ext = ext;
-      // this.api_url = "";
+      this.apiProviders = [
+        "https://data-asg.goldprice.org/GetData/", // primary provider (no key required)
+        "https://www.goldapi.io/api/"              // secondary provider (requires API key)
+      ]
+      this.api_url = "";
       this.lock = false;
       this.price;
       this.lastUpdate;
@@ -38,6 +39,8 @@ const Indicator = GObject.registerClass(
       let settingsBtn = new PopupMenu.PopupMenuItem(_(`Settings`));
       // Events
       refreshBtn.connect("activate", () => {
+        console.log("test refresh");
+        
         this._fetch_data();
       });
       settingsBtn.connect("activate", () => {
@@ -100,7 +103,7 @@ const Indicator = GObject.registerClass(
       switch (provider) {
         case 1:
           // goldapi.io
-          this.api_url = this.APIS[1];
+          this.api_url = this.apiProviders[1];
           // goldapi accepts /XAU/{currency}
           var url = `${this.api_url}XAU/${currency}`;
           request = Soup.Message.new("GET", url);
@@ -108,11 +111,17 @@ const Indicator = GObject.registerClass(
           const key = this._get_api_key();
           if (key && key.length > 0) {
             request.request_headers.append("x-access-token", key);
+          } else {
+            // no API key configured, fall back to the primary provider
+            this._log(["goldapi.io selected but no API key set, falling back to primary provider"]);
+            this.api_url = this.apiProviders[0];
+            url = `${this.api_url}${currency}-XAU/1`;
+            request = Soup.Message.new("GET", url);
           }
           break;
         default:
           // goldprice.org
-          this.api_url = this.APIS[0];
+          this.api_url = this.apiProviders[0];
           var url = `${this.api_url}${currency}-XAU/1`;
           request = Soup.Message.new("GET", url);
           break;
