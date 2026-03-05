@@ -14,12 +14,16 @@ import * as Currencies from "./currencies.js";
 const Indicator = GObject.registerClass(
   class Indicator extends PanelMenu.Button {
     displayText = "...";
+    APIS = [
+      "https://data-asg.goldprice.org/GetData/",
+      "https://www.goldapi.io/api/"
+    ]
 
     _init(ext) {
       super._init(0.0, _("Gold Price Indicator"));
       this._httpSession = new Soup.Session();
       this._ext = ext;
-      this.api_url = "https://data-asg.goldprice.org/GetData/";
+      // this.api_url = "";
       this.lock = false;
       this.price;
       this.lastUpdate;

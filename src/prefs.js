@@ -16,6 +16,12 @@ export default class ExamplePreferences extends ExtensionPreferences {
     });
     window.add(page);
 
+    // API Provider
+    page.add(this._create_api_provider_options());
+
+    // API Key
+    page.add(this._create_api_key_options());
+
     // Weight Unit
     page.add(this._create_weight_unit_options());
 
@@ -76,11 +82,11 @@ export default class ExamplePreferences extends ExtensionPreferences {
     const refreshGroup = new Adw.PreferencesGroup({ title: "Refresh Interval" });
 
     const refreshRow = new Adw.SpinRow({
-      title: "Refresh Interval (Minutes)",
-      subtitle: "Set how often to refresh the gold price.",
+      title: "Refresh Interval (hours)",
+      subtitle: "Set to 0 for manual refresh.",
       adjustment: new Gtk.Adjustment({
-        lower: 1,
-        upper: 120,
+        lower: 0,
+        upper: 24,
         step_increment: 1,
       }),
     });
@@ -120,4 +126,36 @@ export default class ExamplePreferences extends ExtensionPreferences {
     positionGroup.add(positionRow);
     return positionGroup;
   }
+
+  _create_api_provider_options() {
+    const apiproviderGroup = new Adw.PreferencesGroup({ title: "API Provider" });
+
+    const apiproviderModel = new Gtk.StringList();
+    ["goldprice.org", "goldapi.io(APIKey required)"].forEach((pos) => apiproviderModel.append(pos));
+
+    const apiproviderRow = new Adw.ComboRow({
+      title: "API Provider",
+      subtitle: "Select API provider.",
+      model: apiproviderModel,
+    });
+    this._settings.bind("panel-position", apiproviderRow, "selected", Gio.SettingsBindFlags.NO_SENSETIVITY);
+
+    apiproviderGroup.add(apiproviderRow);
+    return apiproviderGroup;
+  }
+
+  _create_api_key_options() {
+    const apikeyGroup = new Adw.PreferencesGroup({ title: "API Key" });
+
+    const apikeyRow = new Adw.EntryRow({
+      title: "API Key",
+      show_apply_button: true,
+    });
+
+    this._settings.bind("api-key", apikeyRow, "text", Gio.SettingsBindFlags.DEFAULT);
+
+    apikeyGroup.add(apikeyRow);
+    return apikeyGroup;
+  }
+
 }
