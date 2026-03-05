@@ -39,8 +39,6 @@ const Indicator = GObject.registerClass(
       let settingsBtn = new PopupMenu.PopupMenuItem(_(`Settings`));
       // Events
       refreshBtn.connect("activate", () => {
-        console.log("test refresh");
-        
         this._fetch_data();
       });
       settingsBtn.connect("activate", () => {
