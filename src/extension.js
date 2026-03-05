@@ -109,14 +109,8 @@ const Indicator = GObject.registerClass(
           const key = this._get_api_key();
           if (key && key.length > 0) {
             request.request_headers.append("x-access-token", key);
-          } else {
-            // no API key configured, fall back to the primary provider
-            this._log(["goldapi.io selected but no API key set, falling back to primary provider"]);
-            this.api_url = this.apiProviders[0];
-            url = `${this.api_url}${currency}-XAU/1`;
-            request = Soup.Message.new("GET", url);
+            break;
           }
-          break;
         default:
           // goldprice.org
           this.api_url = this.apiProviders[0];
