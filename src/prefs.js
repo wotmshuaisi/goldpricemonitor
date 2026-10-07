@@ -22,6 +22,9 @@ export default class ExamplePreferences extends ExtensionPreferences {
     // API Key
     page.add(this._create_api_key_options());
 
+    // Metals
+    page.add(this._create_metal_options());
+
     // Weight Unit
     page.add(this._create_weight_unit_options());
 
@@ -105,8 +108,16 @@ export default class ExamplePreferences extends ExtensionPreferences {
       active: this._settings.get_boolean("hide-unit"),
     });
     this._settings.bind("hide-unit", hideUnitRow, "active", Gio.SettingsBindFlags.DEFAULT);
-
     hideUnitGroup.add(hideUnitRow);
+
+    const hideSymbolsRow = new Adw.SwitchRow({
+      title: "Hide Symbols",
+      subtitle: "Toggle to hide or show metal symbols (e.g. XAU, XAG) in the display.",
+      active: this._settings.get_boolean("hide-symbols"),
+    });
+    this._settings.bind("hide-symbols", hideSymbolsRow, "active", Gio.SettingsBindFlags.DEFAULT);
+    hideUnitGroup.add(hideSymbolsRow);
+
     return hideUnitGroup;
   }
 
@@ -131,7 +142,7 @@ export default class ExamplePreferences extends ExtensionPreferences {
     const apiproviderGroup = new Adw.PreferencesGroup({ title: "API Provider" });
 
     const apiproviderModel = new Gtk.StringList();
-    ["goldprice.org", "goldapi.io(APIKey required)"].forEach((pos) => apiproviderModel.append(pos));
+    ["goldprice.org", "goldapi.io(APIKey required)", "gold-api.com"].forEach((pos) => apiproviderModel.append(pos));
 
     const apiproviderRow = new Adw.ComboRow({
       title: "API Provider",
@@ -156,6 +167,28 @@ export default class ExamplePreferences extends ExtensionPreferences {
 
     apikeyGroup.add(apikeyRow);
     return apikeyGroup;
+  }
+
+  _create_metal_options() {
+    const metalGroup = new Adw.PreferencesGroup({ title: "Metals" });
+
+    const goldRow = new Adw.SwitchRow({
+      title: "Gold (XAU)",
+      subtitle: "Track gold price.",
+      active: this._settings.get_boolean("show-gold"),
+    });
+    this._settings.bind("show-gold", goldRow, "active", Gio.SettingsBindFlags.DEFAULT);
+    metalGroup.add(goldRow);
+
+    const silverRow = new Adw.SwitchRow({
+      title: "Silver (XAG)",
+      subtitle: "Track silver price.",
+      active: this._settings.get_boolean("show-silver"),
+    });
+    this._settings.bind("show-silver", silverRow, "active", Gio.SettingsBindFlags.DEFAULT);
+    metalGroup.add(silverRow);
+
+    return metalGroup;
   }
 
 }
