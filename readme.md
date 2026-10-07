@@ -3,8 +3,17 @@ Gold Price Monitor
 
 [![forthebadge](https://forthebadge.com/images/badges/made-with-javascript.svg)](https://forthebadge.com) [![forthebadge](https://forthebadge.com/images/badges/uses-git.svg)](https://forthebadge.com)
 
-simple gnome extension helps you tracking gold price in realtime. By default it uses data from [GOLDPRICE](https://goldprice.org/),
-with optional support for a secondary provider [goldapi.io](https://www.goldapi.io/) (requires API key).
+A GNOME Shell extension that allows you to track precious metals (Gold & Silver) prices in real-time directly from your top panel.
+
+### Supported Metals
+- **Gold (XAU)**
+- **Silver (XAG)**
+*(Can be enabled individually or displayed simultaneously)*
+
+### Supported Providers
+- [GOLDPRICE](https://goldprice.org/) (no API key required)
+- [gold-api.com](https://gold-api.com/) (no API key required)
+- [goldapi.io](https://www.goldapi.io/) (requires free API key)
 
 ## ScreenShot
 
