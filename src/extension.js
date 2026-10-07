@@ -195,6 +195,7 @@ const Indicator = GObject.registerClass(
 
     destroy() {
       // Remove the background taks
+      this._httpSession.abort();
       GLib.source_remove(this.backgroundTask);
       super.destroy();
     }
