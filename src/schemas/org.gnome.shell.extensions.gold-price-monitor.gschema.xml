@@ -27,8 +27,23 @@
     <key name="hide-unit" type="b">
       <default>false</default>
     </key>
+    <key name="hide-symbols" type="b">
+      <default>false</default>
+      <summary>Hide Symbols</summary>
+      <description>Toggle to hide or show metal symbols in the display.</description>
+    </key>
     <key name="panel-position" type="i">
       <default>2</default>
+    </key>
+    <key name="show-gold" type="b">
+      <default>true</default>
+      <summary>Show Gold</summary>
+      <description>Track gold price (XAU).</description>
+    </key>
+    <key name="show-silver" type="b">
+      <default>false</default>
+      <summary>Show Silver</summary>
+      <description>Track silver price (XAG).</description>
     </key>
   </schema>
 </schemalist>

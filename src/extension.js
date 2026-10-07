@@ -22,7 +22,8 @@ const Indicator = GObject.registerClass(
       this._ext = ext;
       this.apiProviders = [
         "https://data-asg.goldprice.org/GetData/", // primary provider (no key required)
-        "https://www.goldapi.io/api/"              // secondary provider (requires API key)
+        "https://www.goldapi.io/api/",              // secondary provider (requires API key)
+        "https://api.gold-api.com/price/"           // gold-api.com provider (no key required)
       ]
       this.api_url = "";
       this.lock = false;
@@ -93,28 +94,50 @@ const Indicator = GObject.registerClass(
       return this._get_setting_val("api-key");
     }
 
-    _build_req() {
+    _get_selected_metals() {
+      let metals = [];
+      if (this._get_setting_val("show-gold")) {
+        metals.push("XAU");
+      }
+      if (this._get_setting_val("show-silver")) {
+        metals.push("XAG");
+      }
+      if (metals.length === 0) {
+        metals.push("XAU");
+      }
+      return metals;
+    }
+
+    _build_req(metal) {
       const currency = this._get_currency();
       const provider = this._get_api_provider();
       let request = null;
+      var url = "";
       // choose base url depending on selected provider
       switch (provider) {
         case 1:
           // goldapi.io
           this.api_url = this.apiProviders[1];
-          // goldapi accepts /XAU/{currency}
-          var url = `${this.api_url}XAU/${currency}`;
+          // goldapi accepts /{metal}/{currency}
+          url = `${this.api_url}${metal}/${currency}`;
           request = Soup.Message.new("GET", url);
           // add the API key header for goldapi.io if provided
           const key = this._get_api_key();
           if (key && key.length > 0) {
             request.request_headers.append("x-access-token", key);
-            break;
           }
+          break;
+        case 2:
+          // gold-api.com
+          this.api_url = this.apiProviders[2];
+          // gold-api accepts /price/{metal}/{currency}
+          url = `${this.api_url}${metal}/${currency}`;
+          request = Soup.Message.new("GET", url);
+          break;
         default:
           // goldprice.org
           this.api_url = this.apiProviders[0];
-          var url = `${this.api_url}${currency}-XAU/1`;
+          url = `${this.api_url}${currency}-${metal}/1`;
           request = Soup.Message.new("GET", url);
           break;
       }
@@ -130,62 +153,103 @@ const Indicator = GObject.registerClass(
         return;
       }
       this.lock = true;
-      let msg = this._build_req();
-      this._httpSession.send_and_read_async(msg, GLib.PRIORITY_DEFAULT, null, (_, response) => {
-        response = new TextDecoder("utf-8").decode(this._httpSession.send_and_read_finish(response).get_data());
+      const metals = this._get_selected_metals();
+      const results = {};
+      let pending = metals.length;
 
-        if (msg.get_status() > 299) {
-          this._log(["Remote server error:", msg.get_status(), response]);
-          return;
-        }
+      metals.forEach((metal) => {
+        this._fetch_metal_price(metal, (m, priceVal) => {
+          results[m] = priceVal;
+          pending--;
+          if (pending === 0) {
+            let displayParts = [];
+            const hideSymbols = this._get_setting_val("hide-symbols");
+            metals.forEach((item) => {
+              const formatted = this._format_price(results[item]);
+              if (metals.length > 1 && !hideSymbols) {
+                displayParts.push(`${item}: ${formatted}`);
+              } else {
+                displayParts.push(formatted);
+              }
+            });
 
-        const json_data = JSON.parse(response);
-        let latest_price;
-
-        // provider-specific parsing
-        switch (this._get_api_provider()) {
-          case 0:
-            // goldprice.org returns an array of comma separated strings
-            if (!Array.isArray(json_data) || json_data.length === 0) {
-              this._log(["Remote server error:", response]);
-              return;
-            }
-            latest_price = Number.parseFloat(json_data[0].split(",")[1]);
-            break;
-          case 1:
-            // goldapi.io returns an object with a `price` property
-            if (!json_data || typeof json_data.price === "undefined") {
-              this._log(["Remote server error:", response]);
-              return;
-            }
-            latest_price = Number.parseFloat(json_data.price);
-            break;
-          default:
-            latest_price = 0.0
-            break;
-        }
-
-        switch (this._get_setting_val("weight-unit")) {
-          case 1:
-            latest_price = latest_price / 31.1034768;
-            break;
-          case 2:
-            latest_price = (latest_price / 31.1034768) * 1000;
-            break;
-        }
-
-        latest_price = latest_price.toFixed(3);
-        if (!this._get_setting_val("hide-unit")) {
-          latest_price += `(${this._get_currency()})/${this._get_unit()}`;
-        }
-
-        this._log([`Update price from: ${this.price.text} to ${latest_price}`]);
-
-        this.price.text = latest_price;
-
-        this.lastUpdate.label_actor.text = "Last update: " + new Date().toLocaleTimeString();
+            this.price.text = displayParts.join(" | ");
+            this.lastUpdate.label_actor.text = "Last update: " + new Date().toLocaleTimeString();
+            this.lock = false;
+          }
+        });
       });
-      this.lock = false;
+    }
+
+    _fetch_metal_price(metal, callback) {
+      let msg = this._build_req(metal);
+      this._httpSession.send_and_read_async(msg, GLib.PRIORITY_DEFAULT, null, (_, response) => {
+        try {
+          const resBytes = this._httpSession.send_and_read_finish(response);
+          const responseText = new TextDecoder("utf-8").decode(resBytes.get_data());
+
+          if (msg.get_status() > 299) {
+            this._log(["Remote server error for", metal, msg.get_status(), responseText]);
+            callback(metal, null);
+            return;
+          }
+
+          const json_data = JSON.parse(responseText);
+          let latest_price;
+
+          // provider-specific parsing
+          switch (this._get_api_provider()) {
+            case 0:
+              // goldprice.org returns an array of comma separated strings
+              if (!Array.isArray(json_data) || json_data.length === 0) {
+                this._log(["Remote server error:", responseText]);
+                callback(metal, null);
+                return;
+              }
+              latest_price = Number.parseFloat(json_data[0].split(",")[1]);
+              break;
+            case 1:
+            case 2:
+              // goldapi.io and gold-api.com return an object with a `price` property
+              if (!json_data || typeof json_data.price === "undefined") {
+                this._log(["Remote server error:", responseText]);
+                callback(metal, null);
+                return;
+              }
+              latest_price = Number.parseFloat(json_data.price);
+              break;
+            default:
+              latest_price = 0.0;
+              break;
+          }
+
+          callback(metal, latest_price);
+        } catch (e) {
+          this._log(["Error parsing data for", metal, e]);
+          callback(metal, null);
+        }
+      });
+    }
+
+    _format_price(raw_price) {
+      if (raw_price === null || typeof raw_price === "undefined" || isNaN(raw_price)) {
+        return "N/A";
+      }
+      let priceVal = raw_price;
+      switch (this._get_setting_val("weight-unit")) {
+        case 1:
+          priceVal = priceVal / 31.1034768;
+          break;
+        case 2:
+          priceVal = (priceVal / 31.1034768) * 1000;
+          break;
+      }
+
+      let formatted = priceVal.toFixed(3);
+      if (!this._get_setting_val("hide-unit")) {
+        formatted += `(${this._get_currency()})/${this._get_unit()}`;
+      }
+      return formatted;
     }
 
     _log(logs) {
@@ -207,7 +271,7 @@ export default class GoldPriceIndicatorExtension extends Extension {
     this._indicator = new Indicator(this);
     this.addToPanel(this._settings.get_value("panel-position").unpack());
 
-    ["weight-unit", "currency", "refresh-interval", "hide-unit", "panel-position", "api-provider", "api-key"].forEach((key) => {
+    ["weight-unit", "currency", "refresh-interval", "hide-unit", "hide-symbols", "panel-position", "api-provider", "api-key", "show-gold", "show-silver"].forEach((key) => {
       this._settings.connect(`changed::${key}`, () => {
         this.disable();
         this.enable();
